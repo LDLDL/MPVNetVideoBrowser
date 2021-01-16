@@ -1,0 +1,21 @@
+﻿<Window x:Class="MPVNetGUI.ConnectServer"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:csharpgui"
+        mc:Ignorable="d"
+        Title="ConnectServer" Height="210" Width="600" WindowStartupLocation="CenterOwner" ResizeMode="NoResize" Icon="mpv-icon.ico">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="60*"/>
+            <RowDefinition Height="60*"/>
+            <RowDefinition Height="60*"/>
+        </Grid.RowDefinitions>
+        <Button x:Name="connectButton" Content="Connect" HorizontalAlignment="Left" Margin="395,0,0,0" Grid.Row="2" VerticalAlignment="Center" Width="75" Click="connectButton_Click" FontSize="14" Height="28"/>
+        <Button x:Name="cancelButton" Content="Cancel" HorizontalAlignment="Left" Margin="490,0,0,0" Grid.Row="2" VerticalAlignment="Center" Width="75" Click="cancelButton_Click" FontSize="14" Height="28"/>
+        <Label x:Name="label" Content="Url:" HorizontalAlignment="Left" Margin="21,0,0,0" Grid.Row="0" FontSize="14" VerticalAlignment="Center"/>
+        <ComboBox x:Name="comboBox" HorizontalAlignment="Left" Margin="55,0,0,0" Grid.Row="0" VerticalAlignment="Center" Width="510" FontSize="14" Height="30" VerticalContentAlignment="Center" IsEditable="True"/>
+        <TextBlock x:Name="textBlock" HorizontalAlignment="Left" Margin="24,10.4,0,0" Grid.Row="1" TextWrapping="Wrap" VerticalAlignment="Top" FontSize="14" Grid.RowSpan="2"><Run Text="Examples:"/><LineBreak/><Run Text="http(s)://host:port/path/"/><LineBreak/><Run Text="sftp://user:password@host:port/path/"/><LineBreak/><Run Text="D:\Video"/></TextBlock>
+    </Grid>
+</Window>
