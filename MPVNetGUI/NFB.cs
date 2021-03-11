@@ -7,131 +7,162 @@ using System.Text.RegularExpressions;
 using WinSCP;
 
 namespace MPVNetGUI {
-    public abstract class NFB {
-        private Regex re_isvideo;
-        public List<string> filename;
+    
+    public enum fileType {
+        None,
+        Video,
+        Audio,
+        Pciture,
+        Subtitle
+    }
 
-        public NFB() {
-            this.re_isvideo = new Regex(".(mkv|mp4|m2ts|avi|flv|wmv|mov|rmvb)$");
+    public class netFile {
+        public string Name;
+        public string Url;
+        public bool Isdir;
+        public fileType Type = fileType.None;
+
+        private static Regex re_video = new Regex(
+            ".(mkv|mka|mp4|m2ts|avi|flv|wmv|mov|rmvb|vob)$",
+            RegexOptions.IgnoreCase
+        );
+        private static Regex re_audio = new Regex(
+            ".(cue|mp3|flac|wav|wma|ape|aac|dsf|dff)$",
+            RegexOptions.IgnoreCase
+        );
+        private static Regex re_pic = new Regex(
+            ".(jpg|png|gif|bmp|webp|tif)$",
+            RegexOptions.IgnoreCase
+        );
+
+        public netFile(string Name, string Url, bool Isdir = false) {
+            this.Name = Name;
+            this.Url = Url;
+            this.Isdir = Isdir;
+            if (!Isdir) {
+                if (re_video.IsMatch(this.Url)) {
+                    this.Type = fileType.Video;
+                }
+                else if (re_audio.IsMatch(this.Url)) {
+                    this.Type = fileType.Audio;
+                }
+                else if (re_pic.IsMatch(this.Url)) {
+                    this.Type = fileType.Pciture;
+                }
+                else if (this.Url.EndsWith(".ass")) {
+                    this.Type = fileType.Subtitle;
+                }
+                else {
+                    this.Type = fileType.None;
+                }
+            }
+            else {
+                this.Type = fileType.None;
+            }
         }
 
-        public abstract string getabsurl(int index);
-        public abstract bool isdir(int index);
-        public abstract bool cdindex(int index);
-
-        public bool isvideo(int index) {
-            var _fn = this.getabsurl(index);
-            return re_isvideo.IsMatch(_fn);
-        }
-
-        public bool issub(int index) {
-            var _fn = this.getabsurl(index);
-            return _fn.EndsWith(".ass");
+        public bool playable() {
+            return (Type != fileType.None) && (Type != fileType.Subtitle);
         }
     }
 
+    public class netFileCollection : List<netFile> {
+
+    }
+
+    public abstract class NFB {
+        public netFileCollection filelist;
+
+        public abstract void cdurl(string url);
+    }
+
     class HC : NFB {
-        private string http_root_url;
-        private string http_cur_url;
+        private string http_url;
         private HtmlWeb web;
-        private HtmlNodeCollection nodes;
 
         public HC(string url) {
-            this.filename = new List<string>(100);
-            if (!url.EndsWith("/")) {
-                url += "/";
-            }
-            this.http_root_url = url;
-            this.http_cur_url = url;
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-            this.web = new HtmlWeb();
-            httpget();
+            web = new HtmlWeb();
+            this.cdurl(url);
         }
 
-        private void httpget() {
-            this.filename.Clear();
-            var htmlDoc = this.web.Load(this.http_cur_url);
-            this.nodes = htmlDoc.DocumentNode.SelectNodes("//a");
-            if (this.nodes[0].GetAttributeValue("href", "") != "../") {
-                this.nodes.Insert(0, HtmlNode.CreateNode("<a href=\".. /\">../</a>"));
-            }
-            foreach (var node in this.nodes) {
-                if (node.NodeType == HtmlNodeType.Element) {
-                    this.filename.Add(node.InnerText);
-                }
-            }
-        }
-
-        public override string getabsurl(int index) {
-            string _u = this.nodes[index].GetAttributeValue("href", "");
+        private string getabsurl(HtmlNode node) {
+            string _u = node.GetAttributeValue("href", "");
             if (_u.StartsWith("http://") || _u.StartsWith("https://")) {
                 return _u;
             }
             else {
-                return this.http_cur_url + _u;
+                return this.http_url + _u;
             }
         }
 
-        public override bool isdir(int index) {
-            return getabsurl(index).EndsWith("/");
-        }
-
-        public override bool cdindex(int index) {
-            if (index == 0) {
-                if (this.http_cur_url != this.http_root_url) {
-                    this.http_cur_url = this.http_cur_url.Substring(0, this.http_cur_url.LastIndexOf("/"));
-                    this.http_cur_url = this.http_cur_url.Substring(0, this.http_cur_url.LastIndexOf("/") + 1);
+        private void httpget() {
+            this.filelist = new netFileCollection();
+            var htmlDoc = this.web.Load(this.http_url);
+            var nodes = htmlDoc.DocumentNode.SelectNodes("//a");
+            if(nodes[0].GetAttributeValue("href", "") != "../") {
+                this.filelist.Add(new netFile(
+                    Name: "../",
+                    Url: "",
+                    Isdir: true
+                ));
+            }
+            foreach (var node in nodes) {
+                if (node.NodeType == HtmlNodeType.Element) {
+                    var _u = this.getabsurl(node);
+                    this.filelist.Add(new netFile(
+                        Name: node.InnerText,
+                        Url: _u,
+                        Isdir: _u.EndsWith("/")
+                    ));
                 }
-                httpget();
-                return false;
             }
-            if (isdir(index)) {
-                this.http_cur_url = getabsurl(index);
-                httpget();
-                return false;
+        }
+
+        public override void cdurl(string url) {
+            if (!url.EndsWith("/")) {
+                url += "/";
             }
-            return true;
+            this.http_url = url;
+            this.httpget();
         }
     }
 
     class SC : NFB {
+        private string sftp_url;
         private string sftp_host_url;
-        private string sftp_root_path = "/";
         private string sftp_cur_path;
+        private int spliti;
+        private static Regex re_split = new Regex(@"[:@/]");
+        private static Regex re_sftp = new Regex(@"sftp://[^:]+:[^:]+@[^:]+/*[\s\S]*");
+        private static Regex re_sftp_port = new Regex(@"sftp://[^:]+:[^:]+@[^:]+:[0-9]+/*[\s\S]*");
         private SessionOptions sop;
-        private Session session;
-        private RemoteDirectoryInfo rdi;
+        private Session session = new Session();
 
         public SC(string url) {
-            filename = new List<string>(100);
-
-            var re = new Regex(@"sftp://[^:]+:[^:]+@[^:]+/*[\s\S]*");
-            var re_port = new Regex(@"sftp://[^:]+:[^:]+@[^:]+:[0-9]+/*[\s\S]*");
-            var re_split = new Regex(@"[:@/]");
-
+            this.sftp_url = url;
+            this.sftp_cur_path = "/";
             int port_num = 0;
-            if (!re_port.IsMatch(url)) {
-                if (!re.IsMatch(url)) {
+            if (!re_sftp_port.IsMatch(this.sftp_url)) {
+                if (!re_sftp.IsMatch(this.sftp_url)) {
                     throw new ArgumentException("Wrong sftp url.");
                 }
                 port_num = 22;
             }
 
-            var hl = re_split.Split(url.Substring(7));
-            int i;
+            var hl = re_split.Split(this.sftp_url.Substring(7));
             if (port_num == 0) {
                 port_num = Convert.ToInt32(hl[3]);
-                i = 4;
+                this.spliti = 4;
             }
             else {
-                i = 3;
+                this.spliti = 3;
             }
-            for (; i < hl.Length; ++i) {
+            for (int i = this.spliti; i < hl.Length; ++i) {
                 if (hl[i].Length != 0) {
-                    this.sftp_root_path += String.Format("{0}/", hl[i]);
+                    this.sftp_cur_path += String.Format("{0}/", hl[i]);
                 }
             }
-            this.sftp_cur_path = this.sftp_root_path;
             this.sftp_host_url = String.Format("sftp://{0}:{1}@{2}:{3}", hl[0], hl[1], hl[2], port_num);
 
             this.sop = new SessionOptions {
@@ -142,57 +173,49 @@ namespace MPVNetGUI {
                 Password = hl[1],
                 GiveUpSecurityAndAcceptAnySshHostKey = true
             };
-            this.session = new Session();
-            this.session.Open(this.sop);
-            sftp_listdir();
+
+            this.session.Open(sop);
+            this.sftp_listdir();
         }
 
         private void sftp_listdir() {
-            this.filename.Clear();
-            this.rdi = session.ListDirectory(sftp_cur_path);
-            for (int i = 1; i < this.rdi.Files.Count; ++i) {
-                this.filename.Add(this.rdi.Files[i].Name);
+            this.filelist = new netFileCollection();
+            var rdi = this.session.ListDirectory(this.sftp_cur_path);
+            for (int i = 1; i < rdi.Files.Count; ++i) {
+                filelist.Add(new netFile(
+                    Name: rdi.Files[i].Name,
+                    Url: this.sftp_host_url + rdi.Files[i].FullName,
+                    Isdir: rdi.Files[i].IsDirectory
+                )); 
             }
         }
 
-        public override string getabsurl(int index) {
-            return this.sftp_host_url + this.rdi.Files[index + 1].FullName;
-        }
-
-        public override bool isdir(int index) {
-            return this.rdi.Files[index + 1].IsDirectory;
-        }
-
-        public override bool cdindex(int index) {
-            if(index == 0) {
-                if (this.sftp_cur_path != this.sftp_root_path) {
-                    this.sftp_cur_path = sftp_cur_path.Substring(0, sftp_cur_path.LastIndexOf("/"));
-                    this.sftp_cur_path = sftp_cur_path.Substring(0, sftp_cur_path.LastIndexOf("/") + 1);
+        public override void cdurl(string url) {
+            this.sftp_url = url;
+            this.sftp_cur_path = "/";
+            var hl = re_split.Split(this.sftp_url.Substring(7));
+            for (int i = this.spliti; i < hl.Length; ++i) {
+                if (hl[i].Length != 0) {
+                    this.sftp_cur_path += String.Format("{0}/", hl[i]);
                 }
-                sftp_listdir();
-                return false;
             }
-            if (isdir(index)) {
-                this.sftp_cur_path = this.rdi.Files[index + 1].FullName + "/";
-                sftp_listdir();
-                return false;
-            }
-            return true;
+            this.sftp_listdir();
         }
     }
 
     class LF : NFB {
-        private string fs_root_path;
-        private string fs_cur_path;
+        private string fs_path;
 
         public LF(string path) {
-            filename = new List<string>(100);
-            if (Directory.Exists(path)) {
-                if (!path.EndsWith(@"\")) {
-                    path += @"\";
+            cdurl(path);
+        }
+
+        public override void cdurl(string url) {
+            if (Directory.Exists(url)) {
+                if (!url.EndsWith(@"\")) {
+                    url += @"\";
                 }
-                this.fs_root_path = path;
-                this.fs_cur_path = path;
+                this.fs_path = url;
             }
             else {
                 throw new ArgumentException("Not a directory.");
@@ -200,45 +223,33 @@ namespace MPVNetGUI {
             this.lsdir();
         }
 
-        public override string getabsurl(int index) {
-            return this.fs_cur_path + filename[index];
-        }
-
-        public override bool isdir(int index) {
-            return filename[index].EndsWith(@"\");
-        }
-
         public void lsdir() {
-            this.filename.Clear();
-            var dirinfo = new DirectoryInfo(this.fs_cur_path);
+            this.filelist = new netFileCollection();
+            var dirinfo = new DirectoryInfo(this.fs_path);
             var _dir = dirinfo.GetDirectories();
             var _file = dirinfo.GetFiles();
 
-            filename.Add(@"..\");
+            this.filelist.Add(new netFile(
+                Name: @"..\",
+                Url: "",
+                Isdir: true
+            ));
 
             foreach (var i in _dir) {
-                filename.Add(i.Name + @"\");
+                this.filelist.Add(new netFile(
+                    Name: i.Name,
+                    Url: this.fs_path + i.Name,
+                    Isdir: true
+                ));
             }
             foreach (var i in _file) {
-                filename.Add(i.Name);
+                this.filelist.Add(new netFile(
+                    Name: i.Name,
+                    Url: this.fs_path + i.Name,
+                    Isdir: false
+                ));
             }
         }
 
-        public override bool cdindex(int index) {
-            if (index == 0) {
-                if (this.fs_cur_path != this.fs_root_path) {
-                    this.fs_cur_path = fs_cur_path.Substring(0, fs_cur_path.LastIndexOf(@"\"));
-                    this.fs_cur_path = fs_cur_path.Substring(0, fs_cur_path.LastIndexOf(@"\") + 1);
-                }
-                lsdir();
-                return false;
-            }
-            if (isdir(index)) {
-                this.fs_cur_path += filename[index];
-                lsdir();
-                return false;
-            }
-            return true;
-        }
     }
 }

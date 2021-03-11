@@ -8,12 +8,16 @@ namespace MPVNetGUI {
     /// <summary>
     /// ConnectServer.xaml 的交互逻辑
     /// </summary>
+
+    public enum protocolType {
+        HTTP,
+        SFTP,
+        FILE_SYSTEM
+    }
+
     public partial class ConnectServer : Window {
-        public int SFTP = 0xAAAA;
-        public int HTTP = 0xBBBB;
-        public int FILE_SYSTEM = 0xCCCC;
         public bool connected = false;
-        public int ptype;
+        public protocolType ptype;
         public string url;
         private List<string> histroy_list;
 
@@ -45,13 +49,13 @@ namespace MPVNetGUI {
             this.url = comboBox.Text;
             var re = new Regex(@"[a-zA-Z]:\\[\s\S]*");
             if (this.url.StartsWith("http://") || this.url.StartsWith("https://")) {
-                this.ptype = HTTP;
+                this.ptype = protocolType.HTTP;
             }
             else if (this.url.StartsWith("sftp")) {
-                this.ptype = SFTP;
+                this.ptype = protocolType.SFTP;
             }
             else if (re.IsMatch(this.url)) {
-                this.ptype = FILE_SYSTEM;
+                this.ptype = protocolType.FILE_SYSTEM;
             }
             else {
                 var _m = new Msg("Protocol not support.", this);

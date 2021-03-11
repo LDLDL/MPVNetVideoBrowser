@@ -1,6 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
 
 namespace MPVNetGUI {
     /// <summary>
@@ -9,10 +13,12 @@ namespace MPVNetGUI {
     public partial class MainWindow : Window {
         private ConnectServer connect;
         private NFB networkclient;
-        private Process vidoprocess;
+        private FileListBox cur_flb;
+        private Stack<FileListBox> flb_stack;
 
         public MainWindow() {
             InitializeComponent();
+            flb_stack = new Stack<FileListBox>();
         }
 
         private void ConnectServer(object sender, System.EventArgs e) {
@@ -25,7 +31,7 @@ namespace MPVNetGUI {
 
         public void Connect(object sender, EventArgs e) {
             if (connect.connected) {
-                if(connect.ptype == connect.HTTP) {
+                if(connect.ptype == protocolType.HTTP) {
                     try {
                         this.networkclient = new HC(connect.url);
                     }
@@ -35,7 +41,7 @@ namespace MPVNetGUI {
                         return;
                     }
                 }
-                else if(connect.ptype == connect.SFTP) {
+                else if(connect.ptype == protocolType.SFTP) {
                     try {
                         this.networkclient = new SC(connect.url);
                     }
@@ -45,7 +51,7 @@ namespace MPVNetGUI {
                         return;
                     }
                 }
-                else if (connect.ptype == connect.FILE_SYSTEM) {
+                else if (connect.ptype == protocolType.FILE_SYSTEM) {
                     try {
                         this.networkclient = new LF(connect.url);
                     }
@@ -55,9 +61,11 @@ namespace MPVNetGUI {
                         return;
                     }
                 }
-                foreach (var fn in this.networkclient.filename) {
-                    listBox.Items.Add(fn);
-                }
+                this.cur_flb = new FileListBox(networkclient.filelist);
+                this.cur_flb.MouseDoubleClick += new MouseButtonEventHandler(listBox_MouseDoubleClick);
+                flb_stack.Push(this.cur_flb);
+                grid.Children.Add(this.cur_flb);
+                this.cur_flb.SetValue(Grid.RowProperty, 1);
             }
             else {
                 this.Close();
@@ -65,44 +73,78 @@ namespace MPVNetGUI {
         }
 
         private void listBox_MouseDoubleClick(object sender, EventArgs e) {
-            if (listBox.SelectedIndex != -1) {
-                bool isfile;
-                try {
-                    isfile = this.networkclient.cdindex(listBox.SelectedIndex);
-                }
-                catch (Exception ex) {
-                    var _m = new Msg(ex.Message, this);
-                    return;
-                }
-                if (!isfile) {
-                    listBox.Items.Clear();
-                    foreach (var fn in this.networkclient.filename) {
-                        listBox.Items.Add(fn);
+            var _i = this.cur_flb.listBox.SelectedIndex;
+            if (_i != -1) {
+                if(_i == 0) {
+                    if(flb_stack.Count > 1) {
+                        grid.Children.Remove(flb_stack.Pop());
+                        this.cur_flb = flb_stack.Peek();
+                        grid.Children.Add(this.cur_flb);
+                        this.cur_flb.SetValue(Grid.RowProperty, 1);
                     }
-                    listBox.SelectedIndex = 0;
-                    listBox.ScrollIntoView(listBox.Items[0]);
                 }
                 else {
-                    if (this.networkclient.isvideo(listBox.SelectedIndex)) {
-                        string com_par = '"' + networkclient.getabsurl(listBox.SelectedIndex) + '"';
-                        var ss = new SelectSub(networkclient, this);
-                        if (ss.havesub) {
-                            com_par += " --sub-file=\"" + ss.suburl + '"';
-                        }
-                        this.vidoprocess = new Process();
-                        ProcessStartInfo startInfo = new ProcessStartInfo(".\\mpv.exe", com_par);
-                        this.vidoprocess.StartInfo = startInfo;
-                        this.vidoprocess.StartInfo.UseShellExecute = true;
-                        /*                        this.vidoprocess.StartInfo.RedirectStandardInput = true;
-                                                this.vidoprocess.StartInfo.RedirectStandardOutput = true;
-                                                this.vidoprocess.StartInfo.RedirectStandardError = true;*/
-                        this.vidoprocess.Start();
+                    var selectd_file = this.cur_flb.filelist[_i];
+                    if (selectd_file.Isdir) {
+                        networkclient.cdurl(this.cur_flb.filelist[_i].Url);
+                        grid.Children.Remove(this.cur_flb);
+                        this.cur_flb = new FileListBox(networkclient.filelist);
+                        this.cur_flb.MouseDoubleClick += new MouseButtonEventHandler(listBox_MouseDoubleClick);
+                        flb_stack.Push(this.cur_flb);
+                        grid.Children.Add(this.cur_flb);
+                        this.cur_flb.SetValue(Grid.RowProperty, 1);
                     }
                     else {
-                        var _m = new Msg("Not a video.", this);
+                        if (selectd_file.playable()) {
+                            string command_param = string.Format("\"{0}\"", selectd_file.Url);
+                            if(selectd_file.Type == fileType.Video) {
+                                var ss = new SelectSub(this.cur_flb.filelist, selectd_file.Name, this);
+                                if (ss.havesub) {
+                                    command_param += " --sub-file=";
+                                    foreach (var su in ss.suburl) {
+                                        command_param += string.Format("\"{0}\"", su);
+                                    }
+                                }
+                            }
+                            else if(selectd_file.Type == fileType.Pciture) {
+                                command_param += " --keep-open=yes";
+                            }
+                            var vidoprocess = new Process();
+                            ProcessStartInfo startInfo = new ProcessStartInfo(".\\mpv.exe", command_param);
+                            vidoprocess.StartInfo = startInfo;
+                            vidoprocess.StartInfo.UseShellExecute = true;
+                            vidoprocess.Start();
+                        }
+                        else {
+                            var _m = new Msg("Can not play.", this);
+                        }
                     }
                 }
             }
+        }
+
+        private void search_button_Click(object sender, RoutedEventArgs e) {
+            var search_text = search_textbox.Text;
+            if(search_text == "") {
+                return;
+            }
+            var search_result = new netFileCollection();
+            search_result.Add(new netFile(
+                Name: "<Return>",
+                Url: "",
+                Isdir: true
+            ));
+            foreach (var nf in this.cur_flb.filelist) {
+                if (nf.Name.IndexOf(search_text, StringComparison.OrdinalIgnoreCase) > -1) {
+                    search_result.Add(nf);
+                }
+            }
+            grid.Children.Remove(this.cur_flb);
+            this.cur_flb = new FileListBox(search_result);
+            this.cur_flb.MouseDoubleClick += new MouseButtonEventHandler(listBox_MouseDoubleClick);
+            flb_stack.Push(this.cur_flb);
+            grid.Children.Add(this.cur_flb);
+            this.cur_flb.SetValue(Grid.RowProperty, 1);
         }
     }
 }

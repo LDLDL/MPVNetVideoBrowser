@@ -18,28 +18,39 @@ namespace MPVNetGUI {
     /// </summary>
     public partial class SelectSub : Window {
         public bool havesub = false;
-        public string suburl;
-        private List<string> sub_url_list;
+        public List<string> suburl = new List<string>();
+        private netFileCollection sub_file_list;
 
-        public SelectSub(NFB client, Window Owner) {
+        public SelectSub(netFileCollection filelist, string filename, Window Owner) {
             InitializeComponent();
             this.Owner = Owner;
-            sub_url_list = new List<string>(100);
-            for(int i = 0; i < client.filename.Count; ++i) {
-                if (client.issub(i)) {
-                    listBox.Items.Add(client.filename[i]);
-                    sub_url_list.Add(client.getabsurl(i));
+            this.sub_file_list = new netFileCollection();
+            foreach(var nf in filelist) {
+                if (nf.Type == fileType.Subtitle) {
+                    int l = (filename.Length > nf.Name.Length) ? nf.Name.Length : filename.Length;
+                    for (int i = 0; i < l; ++i) {
+                        if(filename[i] != nf.Name[i]) {
+                            break;
+                        }
+                        else if (filename[i] == '.' && nf.Name[i] == '.'){
+                            suburl.Add(nf.Name);
+                            havesub = true;
+                            break;
+                        }
+                    }
+                    this.sub_file_list.Add(nf);
+                    listBox.Items.Add(nf.Name);
                 }
             }
-            if(sub_url_list.Count != 0) {
+            if ( (sub_file_list.Count > 0) && (suburl.Count == 0) ){
                 this.ShowDialog();
             }
         }
 
         public void listBox_MouseDoubleClick(object sender, EventArgs e) {
             if(listBox.SelectedIndex != -1) {
-                suburl = sub_url_list[listBox.SelectedIndex];
-                havesub = true;
+                this.suburl.Add(sub_file_list[listBox.SelectedIndex].Url);
+                this.havesub = true;
                 this.Close();
             }
         }

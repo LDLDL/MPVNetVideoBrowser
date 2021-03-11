@@ -1,16 +1,18 @@
-﻿<Window x:Class="MPVNetGUI.MainWindow"
+﻿<Window x:Name="mainWindow"
+        x:Class="MPVNetGUI.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:csharpgui"
+        xmlns:local="clr-namespace:MPVNetGUI"
         mc:Ignorable="d"
         Title="NetVideoBrowser" Height="600" Width="1000" Icon="mpv-icon.ico" ResizeMode="NoResize" WindowStartupLocation="CenterScreen" SourceInitialized="ConnectServer">
-    <ListBox x:Name="listBox" MouseDoubleClick="listBox_MouseDoubleClick">
-        <ListBox.ItemTemplate>
-            <DataTemplate>
-                <Label Content="{Binding}" FontSize="16" Height="45" HorizontalContentAlignment="Left" VerticalContentAlignment="Center" />
-            </DataTemplate>
-        </ListBox.ItemTemplate>
-    </ListBox>
+    <Grid x:Name="grid">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="35"/>
+            <RowDefinition Height="535"/>
+        </Grid.RowDefinitions>
+        <TextBox x:Name="search_textbox" HorizontalAlignment="Left" Height="35" TextWrapping="Wrap" VerticalAlignment="Top" Width="901" FontSize="14" VerticalContentAlignment="Center"/>
+        <Button x:Name="search_button" Content="Search" HorizontalAlignment="Left" Margin="901,0,0,0" VerticalAlignment="Top" Height="35" Width="85" FontSize="14" Click="search_button_Click"/>
+    </Grid>
 </Window>
