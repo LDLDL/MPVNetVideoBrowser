@@ -207,7 +207,7 @@ namespace MPVNetGUI {
         private string fs_path;
 
         public LF(string path) {
-            cdurl(path);
+            this.cdurl(path);
         }
 
         public override void cdurl(string url) {

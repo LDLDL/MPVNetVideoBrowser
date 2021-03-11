@@ -86,7 +86,13 @@ namespace MPVNetGUI {
                 else {
                     var selectd_file = this.cur_flb.filelist[_i];
                     if (selectd_file.Isdir) {
-                        networkclient.cdurl(this.cur_flb.filelist[_i].Url);
+                        try {
+                            networkclient.cdurl(this.cur_flb.filelist[_i].Url);
+                        }
+                        catch (Exception ex) {
+                            var _m = new Msg(ex.Message, this);
+                            return;
+                        }
                         grid.Children.Remove(this.cur_flb);
                         this.cur_flb = new FileListBox(networkclient.filelist);
                         this.cur_flb.MouseDoubleClick += new MouseButtonEventHandler(listBox_MouseDoubleClick);
