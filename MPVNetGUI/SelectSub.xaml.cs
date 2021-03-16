@@ -33,7 +33,7 @@ namespace MPVNetGUI {
                             break;
                         }
                         else if (filename[i] == '.' && nf.Name[i] == '.'){
-                            suburl.Add(nf.Name);
+                            suburl.Add(nf.Url);
                             havesub = true;
                             break;
                         }

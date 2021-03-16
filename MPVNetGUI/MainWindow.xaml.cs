@@ -106,9 +106,8 @@ namespace MPVNetGUI {
                             if(selectd_file.Type == fileType.Video) {
                                 var ss = new SelectSub(this.cur_flb.filelist, selectd_file.Name, this);
                                 if (ss.havesub) {
-                                    command_param += " --sub-file=";
                                     foreach (var su in ss.suburl) {
-                                        command_param += string.Format("\"{0}\"", su);
+                                        command_param += string.Format(" --sub-file=\"{0}\"", su);
                                     }
                                 }
                             }
