@@ -64,8 +64,8 @@ namespace MPVNetGUI {
                 this.cur_flb = new FileListBox(networkclient.filelist);
                 this.cur_flb.MouseDoubleClick += new MouseButtonEventHandler(listBox_MouseDoubleClick);
                 flb_stack.Push(this.cur_flb);
-                grid.Children.Add(this.cur_flb);
                 this.cur_flb.SetValue(Grid.RowProperty, 1);
+                grid.Children.Add(this.cur_flb);
             }
             else {
                 this.Close();
@@ -80,7 +80,9 @@ namespace MPVNetGUI {
                         grid.Children.Remove(flb_stack.Pop());
                         this.cur_flb = flb_stack.Peek();
                         grid.Children.Add(this.cur_flb);
-                        this.cur_flb.SetValue(Grid.RowProperty, 1);
+                        //this.cur_flb.SetValue(Grid.RowProperty, 1);
+                        var listboxitem = (ListBoxItem)this.cur_flb.listBox.ItemContainerGenerator.ContainerFromItem(this.cur_flb.listBox.SelectedItem);
+                        listboxitem.Focus();
                     }
                 }
                 else {
@@ -97,8 +99,8 @@ namespace MPVNetGUI {
                         this.cur_flb = new FileListBox(networkclient.filelist);
                         this.cur_flb.MouseDoubleClick += new MouseButtonEventHandler(listBox_MouseDoubleClick);
                         flb_stack.Push(this.cur_flb);
-                        grid.Children.Add(this.cur_flb);
                         this.cur_flb.SetValue(Grid.RowProperty, 1);
+                        grid.Children.Add(this.cur_flb);
                     }
                     else {
                         if (selectd_file.playable()) {
@@ -148,8 +150,15 @@ namespace MPVNetGUI {
             this.cur_flb = new FileListBox(search_result);
             this.cur_flb.MouseDoubleClick += new MouseButtonEventHandler(listBox_MouseDoubleClick);
             flb_stack.Push(this.cur_flb);
-            grid.Children.Add(this.cur_flb);
             this.cur_flb.SetValue(Grid.RowProperty, 1);
+            grid.Children.Add(this.cur_flb);
+            search_textbox.Text = "";
+        }
+
+        private void textbox_enter(object sender, KeyEventArgs e) {
+            if(e.Key == Key.Return) {
+                search_button_Click(sender, e);
+            }
         }
     }
 }

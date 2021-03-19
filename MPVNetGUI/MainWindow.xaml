@@ -12,7 +12,7 @@
             <RowDefinition Height="35"/>
             <RowDefinition Height="535"/>
         </Grid.RowDefinitions>
-        <TextBox x:Name="search_textbox" HorizontalAlignment="Left" Height="35" TextWrapping="Wrap" VerticalAlignment="Top" Width="901" FontSize="14" VerticalContentAlignment="Center"/>
+        <TextBox x:Name="search_textbox" HorizontalAlignment="Left" Height="35" TextWrapping="Wrap" VerticalAlignment="Top" Width="901" FontSize="14" VerticalContentAlignment="Center" KeyDown="textbox_enter"/>
         <Button x:Name="search_button" Content="Search" HorizontalAlignment="Left" Margin="901,0,0,0" VerticalAlignment="Top" Height="35" Width="85" FontSize="14" Click="search_button_Click"/>
     </Grid>
 </Window>
