@@ -51,6 +51,18 @@ namespace MPVNetGUI {
                         return;
                     }
                 }
+                else if (connect.ptype == protocolType.WEBDAV) {
+                    try
+                    {
+                        this.networkclient = new DAV(connect.url);
+                    }
+                    catch (Exception ex)
+                    {
+                        var _m = new Msg(ex.Message, this);
+                        this.Close();
+                        return;
+                    }
+                }
                 else if (connect.ptype == protocolType.FILE_SYSTEM) {
                     try {
                         this.networkclient = new LF(connect.url);

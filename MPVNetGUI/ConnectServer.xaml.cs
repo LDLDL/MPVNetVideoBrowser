@@ -12,6 +12,7 @@ namespace MPVNetGUI {
     public enum protocolType {
         HTTP,
         SFTP,
+        WEBDAV,
         FILE_SYSTEM
     }
 
@@ -51,8 +52,11 @@ namespace MPVNetGUI {
             if (this.url.StartsWith("http://") || this.url.StartsWith("https://")) {
                 this.ptype = protocolType.HTTP;
             }
-            else if (this.url.StartsWith("sftp")) {
+            else if (this.url.StartsWith("sftp://")) {
                 this.ptype = protocolType.SFTP;
+            }
+            else if (this.url.StartsWith("dav://") || this.url.StartsWith("davs://")) {
+                this.ptype = protocolType.WEBDAV;
             }
             else if (re.IsMatch(this.url)) {
                 this.ptype = protocolType.FILE_SYSTEM;

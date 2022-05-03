@@ -17,10 +17,10 @@ namespace MPVNetGUI {
     }
 
     public class netFile {
-        public string Name;
-        public string Url;
-        public bool Isdir;
-        public fileType Type = fileType.None;
+        public string Name { get; }
+        public string Url { get; }
+        public bool Isdir { get; }
+        public fileType Type { get; } = fileType.None;
 
         private static Regex re_video = new Regex(
             ".(mkv|mka|mp4|m2ts|avi|flv|wmv|mov|rmvb|vob)$",
@@ -200,6 +200,105 @@ namespace MPVNetGUI {
                 }
             }
             this.sftp_listdir();
+        }
+    }
+
+    class DAV : NFB
+    {
+        private string webdav_url;
+        private string webdav_file_base_url;
+        private string webdav_cur_path;
+        private bool ssl;
+        private int spliti;
+        private static Regex re_webdav_split = new Regex(@"[:@/]");
+        private static Regex re_webdav = new Regex(@"(dav|davs)://[^:]+:[^:]+@[^:]+/*[\s\S]*");
+        private static Regex re_webdav_port = new Regex(@"(dav|davs)://[^:]+:[^:]+@[^:]+:[0-9]+/*[\s\S]*");
+        private SessionOptions sop;
+        private Session session = new Session();
+
+        public DAV(string url) {
+            this.webdav_url = url;
+            this.webdav_cur_path = "/";
+            this.ssl = this.webdav_url.StartsWith("davs");
+            int port_num = 0;
+
+            if (!re_webdav_port.IsMatch(this.webdav_url))
+            {
+                if (!re_webdav.IsMatch(this.webdav_url))
+                {
+                    throw new ArgumentException("Wrong webdav url.");
+                }
+                port_num = this.ssl ? 443 : 80;
+            }
+
+            var hl = re_webdav_split.Split(this.webdav_url.Substring(ssl ? 7 : 6));
+            if (port_num == 0)
+            {
+                port_num = Convert.ToInt32(hl[3]);
+                this.spliti = 4;
+            }
+            else
+            {
+                this.spliti = 3;
+            }
+
+            for (int i = this.spliti; i < hl.Length; ++i)
+            {
+                if (hl[i].Length != 0)
+                {
+                    this.webdav_cur_path += String.Format("{0}/", hl[i]);
+                }
+            }
+            this.webdav_file_base_url = ssl ? String.Format("https://{0}:{1}@{2}:{3}", hl[0], hl[1], hl[2], port_num) :
+                                              String.Format("http://{0}:{1}@{2}:{3}", hl[0], hl[1], hl[2], port_num);
+
+            this.sop = new SessionOptions
+            {
+                Protocol = Protocol.Webdav,
+                HostName = hl[2],
+                PortNumber = port_num,
+                UserName = hl[0],
+                Password = hl[1],
+                RootPath = this.webdav_cur_path,
+                WebdavSecure = ssl
+            };
+
+            this.session.Open(sop);
+            this.webdav_lsdir();
+        }
+
+        private void webdav_lsdir() {
+            this.filelist = new netFileCollection();
+            var rdi = this.session.ListDirectory(this.webdav_cur_path);
+
+            this.filelist.Add(new netFile(
+                Name: "../",
+                Url: "",
+                Isdir: true
+            ));
+
+            for (int i = 1; i < rdi.Files.Count; ++i)
+            {
+                filelist.Add(new netFile(
+                    Name: rdi.Files[i].Name,
+                    Url: this.webdav_file_base_url + rdi.Files[i].FullName,
+                    Isdir: rdi.Files[i].IsDirectory
+                ));
+            }
+        }
+
+        public override void cdurl(string url) {
+            this.webdav_url = url;
+            this.webdav_cur_path = "/";
+            var hl = re_webdav_split.Split(this.webdav_url.Substring(this.ssl ? 8 : 7));
+            for (int i = this.spliti; i < hl.Length; ++i)
+            {
+                if (hl[i].Length != 0)
+                {
+                    this.webdav_cur_path += String.Format("{0}/", hl[i]);
+                }
+            }
+            this.webdav_lsdir();
         }
     }
 
