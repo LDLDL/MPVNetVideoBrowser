@@ -74,6 +74,10 @@ namespace MPVNetGUI {
         public netFileCollection filelist;
 
         public abstract void cdurl(string url);
+
+        public void sortFile() {
+            this.filelist.Sort((x, y) => x.Name.CompareTo(y.Name));
+        }
     }
 
     class HC : NFB {
@@ -188,6 +192,7 @@ namespace MPVNetGUI {
                     Isdir: rdi.Files[i].IsDirectory
                 )); 
             }
+            this.sortFile();
         }
 
         public override void cdurl(string url) {
@@ -285,6 +290,7 @@ namespace MPVNetGUI {
                     Isdir: rdi.Files[i].IsDirectory
                 ));
             }
+            this.sortFile();
         }
 
         public override void cdurl(string url) {
