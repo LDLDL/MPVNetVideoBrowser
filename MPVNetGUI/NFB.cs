@@ -104,13 +104,7 @@ namespace MPVNetGUI {
             this.filelist = new netFileCollection();
             var htmlDoc = this.web.Load(this.http_url);
             var nodes = htmlDoc.DocumentNode.SelectNodes("//a");
-            if(nodes[0].GetAttributeValue("href", "") != "../") {
-                this.filelist.Add(new netFile(
-                    Name: "../",
-                    Url: "",
-                    Isdir: true
-                ));
-            }
+            
             foreach (var node in nodes) {
                 if (node.NodeType == HtmlNodeType.Element) {
                     var _u = this.getabsurl(node);
@@ -120,6 +114,11 @@ namespace MPVNetGUI {
                         Isdir: _u.EndsWith("/")
                     ));
                 }
+            }
+
+            if (nodes[0].GetAttributeValue("href", "") == "../")
+            {
+                this.filelist.RemoveAt(0);
             }
         }
 
@@ -185,7 +184,7 @@ namespace MPVNetGUI {
         private void sftp_listdir() {
             this.filelist = new netFileCollection();
             var rdi = this.session.ListDirectory(this.sftp_cur_path);
-            for (int i = 1; i < rdi.Files.Count; ++i) {
+            for (int i = 2; i < rdi.Files.Count; ++i) {
                 filelist.Add(new netFile(
                     Name: rdi.Files[i].Name,
                     Url: this.sftp_host_url + rdi.Files[i].FullName,
@@ -276,12 +275,6 @@ namespace MPVNetGUI {
             this.filelist = new netFileCollection();
             var rdi = this.session.ListDirectory(this.webdav_cur_path);
 
-            this.filelist.Add(new netFile(
-                Name: "../",
-                Url: "",
-                Isdir: true
-            ));
-
             for (int i = 1; i < rdi.Files.Count; ++i)
             {
                 filelist.Add(new netFile(
@@ -333,12 +326,6 @@ namespace MPVNetGUI {
             var dirinfo = new DirectoryInfo(this.fs_path);
             var _dir = dirinfo.GetDirectories();
             var _file = dirinfo.GetFiles();
-
-            this.filelist.Add(new netFile(
-                Name: @"..\",
-                Url: "",
-                Isdir: true
-            ));
 
             foreach (var i in _dir) {
                 this.filelist.Add(new netFile(

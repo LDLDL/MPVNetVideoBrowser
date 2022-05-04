@@ -52,12 +52,10 @@ namespace MPVNetGUI {
                     }
                 }
                 else if (connect.ptype == protocolType.WEBDAV) {
-                    try
-                    {
+                    try {
                         this.networkclient = new DAV(connect.url);
                     }
-                    catch (Exception ex)
-                    {
+                    catch (Exception ex) {
                         var _m = new Msg(ex.Message, this);
                         this.Close();
                         return;
@@ -86,7 +84,7 @@ namespace MPVNetGUI {
 
         private void listBox_MouseDoubleClick(object sender, EventArgs e) {
             var _i = this.cur_flb.listBox.SelectedIndex;
-            if (_i != -1) {
+            if (_i >= 0) {
                 if(_i == 0) {
                     if(flb_stack.Count > 1) {
                         grid.Children.Remove(flb_stack.Pop());
@@ -98,6 +96,7 @@ namespace MPVNetGUI {
                     }
                 }
                 else {
+                    _i--;
                     var selectd_file = this.cur_flb.filelist[_i];
                     if (selectd_file.Isdir) {
                         try {

@@ -23,6 +23,7 @@ namespace MPVNetGUI {
         public FileListBox(netFileCollection filelist) {
             InitializeComponent();
             this.filelist = filelist;
+            listBox.Items.Add("../");
             foreach(var nf in this.filelist) {
                 listBox.Items.Add(nf.Name);
             }
