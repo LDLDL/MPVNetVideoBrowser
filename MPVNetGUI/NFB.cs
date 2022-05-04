@@ -87,6 +87,13 @@ namespace MPVNetGUI {
         public HC(string url) {
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
             web = new HtmlWeb();
+            web.PostResponse = (request, response) => {
+                if (response != null) {
+                    if (response.StatusCode != HttpStatusCode.OK) {
+                        throw new WebException(String.Format("Http status: {0} {1}", (int)response.StatusCode, response.StatusDescription));
+                    }
+                }
+            };
             this.cdurl(url);
         }
 
