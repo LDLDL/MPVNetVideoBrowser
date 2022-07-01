@@ -92,7 +92,9 @@ namespace MPVNetGUI {
                         grid.Children.Add(this.cur_flb);
                         //this.cur_flb.SetValue(Grid.RowProperty, 1);
                         var listboxitem = (ListBoxItem)this.cur_flb.listBox.ItemContainerGenerator.ContainerFromItem(this.cur_flb.listBox.SelectedItem);
-                        listboxitem.Focus();
+                        if (listboxitem != null) {
+                            listboxitem.Focus();
+                        }
                     }
                 }
                 else {
@@ -147,11 +149,6 @@ namespace MPVNetGUI {
                 return;
             }
             var search_result = new netFileCollection();
-            search_result.Add(new netFile(
-                Name: "<Return>",
-                Url: "",
-                Isdir: true
-            ));
             foreach (var nf in this.cur_flb.filelist) {
                 if (nf.Name.IndexOf(search_text, StringComparison.OrdinalIgnoreCase) > -1) {
                     search_result.Add(nf);
